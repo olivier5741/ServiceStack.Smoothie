@@ -18,12 +18,31 @@ namespace ServiceStack.Smoothie.Test
             
             return request;
         }
+
+        public Timer Get(Timer request)
+        {
+            return Db.SingleById<Timer>(request.Id);
+        }
+
+        public void Post(TimerCancel request)
+        {
+            var timer = Db.SingleById<Timer>(request.Id);
+            timer.Inactive = true;
+            Db.Save(timer);
+        }
     }
 
     public class Timer
     {
         // ReSharper disable once UnusedAutoPropertyAccessor.Global
         public DateTime Time { get; set; }
+        public Guid Id { get; set; }
+        public bool Inactive { get; set; }
+    }
+
+    // ReSharper disable once ClassNeverInstantiated.Global
+    public class TimerCancel
+    {
         public Guid Id { get; set; }
     }
 
@@ -55,11 +74,12 @@ namespace ServiceStack.Smoothie.Test
         }
         
         [Fact]
-        public void Test()
+        public void CreateAndCancel()
         {
-            _svc.Post(new Timer{Time = DateTime.Now.AddHours(1)});
+            var timer = _svc.Post(new Timer{Time = DateTime.Now.AddHours(1)});
+            _svc.Post(new TimerCancel {Id = timer.Id});
             
-            Assert.True(true);
+            Assert.True(_svc.Get(timer).Inactive);
         }
 
         public void Dispose()
