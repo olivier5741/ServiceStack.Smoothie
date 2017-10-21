@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.0.0
-MinimumVisualStudioVersion = 10.0.0.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceStack.Smoothie.Test", "src\Test\ServiceStack.Smoothie.Test.csproj", "{BEB919EE-C865-4F4A-A94D-20F4F77DD7DE}"
+# Visual Studio 15
+VisualStudioVersion = 15.0.26430.6
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServiceStack.Smoothie.Test", "src\Test\ServiceStack.Smoothie.Test.csproj", "{BEB919EE-C865-4F4A-A94D-20F4F77DD7DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
