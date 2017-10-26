@@ -17,7 +17,9 @@ namespace ServiceStack.Smoothie.Test
 
         private List<Smooth> Next(List<Guid> appIds)
         {
-            var query = Db.From<Smooth>().Where(s => s.Published == false)  //s.Cancelled == false && s.Published == false && appIds.Contains(s.Id))
+            var query = Db.From<Smooth>()
+                .Where(s => s.Published ==
+                            false) //s.Cancelled == false && s.Published == false && appIds.Contains(s.Id))
                 .Take(100);
             return Db.Select(query);
         }
@@ -25,77 +27,93 @@ namespace ServiceStack.Smoothie.Test
         public Smooth Post(Smooth request)
         {
             var app = Db.SingleById<SmoothApp>(request.AppId);
-            
-            if(app == null)
+
+            if (app == null)
                 throw new ArgumentNullException("App does not exist");
-            
+
             Db.Save(request);
 
             return request;
         }
-        
+
         public void Play(TimeSpan lastTimeSpan, TimeSpan nextTimeSpan)
         {
             var now = DateTime.Now;
             var from = now.Subtract(lastTimeSpan);
-            
-            var query = Db.From<Smooth>()
-                .Where(s => s.Cancelled == false)
-                .Where(s => s.Smoothed == null || s.Smoothed >= from)
-                .GroupBy(s => new { s.AppId, s.Published })
-                .Select(s => new { s.AppId, s.Published, Count = Sql.Count("*")});
 
-            var counters = Db.Select<SmoothCounter>(query);
-
+            var counters = GetCounters(@from);
             var apps = Db.Select<SmoothApp>(a => a.Inactive == false);
 
-            var amountToPublishByApp = new Dictionary<Guid,int>();
-            
+            var amountToPublishByApp = AmountToPublishByApp(apps, counters, lastTimeSpan, nextTimeSpan);
+            Publish(amountToPublishByApp);
+        }
+
+        private List<SmoothCounter> GetCounters(DateTime @from)
+        {
+            var query = Db.From<Smooth>()
+                .Where(s => s.Cancelled == false)
+                .Where(s => s.Smoothed == null || s.Smoothed >= @from)
+                .GroupBy(s => new {s.AppId, s.Published})
+                .Select(s => new {s.AppId, s.Published, Count = Sql.Count("*")});
+
+            var counters = Db.Select<SmoothCounter>(query);
+            return counters;
+        }
+
+        private void Publish(Dictionary<Guid, int> amountToPublishByApp)
+        {
+            // TODO dangerous zone, a while is not a good idea
+            // Fool proof if amount to publishByApp stays the same, then break the loop
+            while (amountToPublishByApp.Count > 0)
+            {
+                var list = Next(amountToPublishByApp.Select(d => d.Key).ToList());
+                var toPublish = PublishPreparation(amountToPublishByApp, list);
+
+                toPublish.ForEach(s => s.Published = true);
+                toPublish.ForEach(s => _bus.Publish(s));
+                Db.SaveAll(toPublish);
+            }
+        }
+
+        private static List<Smooth> PublishPreparation(Dictionary<Guid, int> amountToPublishByApp, IReadOnlyCollection<Smooth> list)
+        {
+            var toPublish = new List<Smooth>();
+            foreach (var key in amountToPublishByApp.Keys.ToList())
+            {
+                var value = amountToPublishByApp[key];
+                var next = list.Where(e => e.AppId == key).Take(value).ToList();
+
+                toPublish.AddRange(next);
+
+                value = value - next.Count();
+
+                if (value == 0)
+                    amountToPublishByApp.RemoveKey(key);
+                else
+                    amountToPublishByApp[key] = value;
+            }
+            return toPublish;
+        }
+
+        private static Dictionary<Guid, int> AmountToPublishByApp(IEnumerable<SmoothApp> apps, IList<SmoothCounter> counters,
+            TimeSpan lastTimeSpan, TimeSpan nextTimeSpan)
+        {
+            var amountToPublishByApp = new Dictionary<Guid, int>();
+
             foreach (var a in apps)
             {
                 var speedCoefficient = nextTimeSpan / lastTimeSpan;
                 var publishedAmount = counters.SingleOrDefault(c => c.AppId == a.Id && c.Published)?.Count ?? 0;
-                
+
                 // speed dictated by limit + progressive retroaction to reach the speed
-                var amount = a.Limit.Amount*speedCoefficient + (a.Limit.Amount - publishedAmount)*speedCoefficient;
+                var amount = a.Limit.Amount * speedCoefficient + (a.Limit.Amount - publishedAmount) * speedCoefficient;
 
                 if (amount <= 0)
                     continue;
-                
-                amountToPublishByApp.Add(a.Id, (int)Math.Ceiling(amount));
+
+                amountToPublishByApp.Add(a.Id, (int) Math.Ceiling(amount));
             }
-            
-            
-            // TODO dangerous zone, a while is not a good idea
-            while (amountToPublishByApp.Count > 0)
-            {
-                var appIds = amountToPublishByApp.Select(d => d.Key).ToList();
-                var toPublish = new List<Smooth>();
-                var list = Next(appIds);
-
-                var appToRemove = new List<Guid>();
-                
-                foreach (var key in amountToPublishByApp.Keys.ToList())
-                {
-                    var value = amountToPublishByApp[key];
-                    var next = list.Where(e => e.AppId == key).Take(value).ToList();
-                    
-                    toPublish.AddRange(next);
-                    
-                    // TODO not sure I can update an iterated dictionnary
-                    value = value - next.Count();
-
-                    if (value == 0)
-                        amountToPublishByApp.RemoveKey(key);
-                    else
-                        amountToPublishByApp[key] = value;
-                }
-                
-                toPublish.ForEach(s => s.Published = true);
-                toPublish.ForEach(s => _bus.Publish(s));
-
-                Db.SaveAll(toPublish);
-            }
+            return amountToPublishByApp;
         }
     }
 }
