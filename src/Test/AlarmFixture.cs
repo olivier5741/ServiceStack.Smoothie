@@ -1,15 +1,16 @@
 using System;
 using System.Threading;
 using EasyNetQ;
+using NUnit.Framework;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
 using ServiceStack.Redis;
 using ServiceStack.Testing;
 using ServiceStack.Text;
-using Xunit;
 
 namespace ServiceStack.Smoothie.Test
 {
+    [TestFixture]
     public class AlarmFixture : IDisposable
     {
         private readonly AlarmService _svc;
@@ -44,7 +45,7 @@ namespace ServiceStack.Smoothie.Test
             _svc = container.Resolve<AlarmService>();
         }
         
-      //  [Fact]
+        [Test]
         public void CreateAndCancel()
         {
             var alarm = _svc.Post(new Alarm{Time = DateTime.Now.AddHours(-1)});
@@ -53,7 +54,7 @@ namespace ServiceStack.Smoothie.Test
             Assert.True(_svc.Get(alarm).Inactive);
         }
 
-     //   [Fact] // commented because will fail on app veyor
+        [Test] // commented because will fail on app veyor
         public void Timer()
         {
             var counter = 0;

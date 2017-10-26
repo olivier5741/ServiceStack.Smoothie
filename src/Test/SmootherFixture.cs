@@ -1,14 +1,16 @@
 using System;
 using EasyNetQ;
+using NUnit.Framework;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
 using ServiceStack.Redis;
 using ServiceStack.Testing;
 using ServiceStack.Text;
-using Xunit;
 
 namespace ServiceStack.Smoothie.Test
 {
+    
+    [TestFixture]
     public class SmootherFixture
     {
         private readonly SmoothApp _app;
@@ -54,7 +56,7 @@ namespace ServiceStack.Smoothie.Test
             _svc = container.Resolve<SmoothService>();
         }
         
-      //  [Fact]
+        [Test]
         public void Test()
         {
             _svc.Post(new Smooth {Id = Guid.NewGuid(), AppId = _app.Id});
