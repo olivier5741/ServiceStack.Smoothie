@@ -45,7 +45,7 @@ namespace ServiceStack.Smoothie.Test
             var apps = Db.Select<SmoothApp>(a => a.Inactive == false);
 
             var amountToPublishByApp = AmountToPublishByApp(apps, counters, lastTimeSpan, nextTimeSpan);
-            Publish(amountToPublishByApp);
+            PublishMultipleByApp(amountToPublishByApp);
         }
 
         private List<SmoothCounter> GetCounters(DateTime @from)
@@ -60,13 +60,13 @@ namespace ServiceStack.Smoothie.Test
             return counters;
         }
 
-        private void Publish(Dictionary<Guid, int> amountToPublishByApp)
+        private void PublishMultipleByApp(Dictionary<Guid, int> amountToPublishByApp)
         {
             var sum = amountToPublishByApp.Sum(a => a.Value);
             while (amountToPublishByApp.Count > 0)
             {
                 var list = Next(amountToPublishByApp.Select(d => d.Key).ToList());
-                var toPublish = PublishPreparation(amountToPublishByApp, list);
+                var toPublish = PublishMultipleByAppFilter(amountToPublishByApp, list);
 
                 toPublish.ForEach(s => s.Published = true);
                 toPublish.ForEach(s => _bus.Publish(s));
@@ -81,7 +81,7 @@ namespace ServiceStack.Smoothie.Test
             }
         }
 
-        private static List<Smooth> PublishPreparation(Dictionary<Guid, int> amountToPublishByApp, IReadOnlyCollection<Smooth> list)
+        private static List<Smooth> PublishMultipleByAppFilter(Dictionary<Guid, int> amountToPublishByApp, IReadOnlyCollection<Smooth> list)
         {
             var toPublish = new List<Smooth>();
             foreach (var key in amountToPublishByApp.Keys.ToList())
