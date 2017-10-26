@@ -15,13 +15,21 @@ namespace ServiceStack.Smoothie.Test
             _bus = bus;
         }
 
-        private List<Smooth> Next(List<Guid> appIds)
+        public SmoothNextResponse Get(SmoothNextRequest request)
         {
             var query = Db.From<Smooth>()
-                .Where(s => s.Published ==
-                            false) //s.Cancelled == false && s.Published == false && appIds.Contains(s.Id))
-                .Take(100);
-            return Db.Select(query);
+                .Where(s => s.Published == false &&
+                            s.Cancelled == false) // TODO appIds.Contains(s.Id))
+                .Take(request.Take)
+                .Skip(request.Skip);
+
+            if (request.TenantId != null)
+                query.Where(s => s.AppId == request.TenantId);
+
+            if (request.AppId != null)
+                query.Where(s => s.AppId == request.AppId);
+
+            return new SmoothNextResponse {Data = Db.Select(query)};
         }
 
         public Smooth Post(Smooth request)
@@ -41,85 +49,91 @@ namespace ServiceStack.Smoothie.Test
             var now = DateTime.Now;
             var from = now.Subtract(lastTimeSpan);
 
-            var counters = GetCounters(@from);
+            var counters = Get(new SmoothStatusRequest {From = from}).Data;
             var apps = Db.Select<SmoothApp>(a => a.Inactive == false);
 
             var amountToPublishByApp = AmountToPublishByApp(apps, counters, lastTimeSpan, nextTimeSpan);
-            PublishMultipleByApp(amountToPublishByApp);
+            Post(amountToPublishByApp);
         }
 
-        private List<SmoothCounter> GetCounters(DateTime @from)
+        public SmoothStatusResponse Get(SmoothStatusRequest request)
         {
             var query = Db.From<Smooth>()
                 .Where(s => s.Cancelled == false)
-                .Where(s => s.Smoothed == null || s.Smoothed >= @from)
+                .Where(s => s.Smoothed == null || s.Smoothed >= request.From)
                 .GroupBy(s => new {s.AppId, s.Published})
                 .Select(s => new {s.AppId, s.Published, Count = Sql.Count("*")});
 
-            var counters = Db.Select<SmoothCounter>(query);
-            return counters;
+            if (request.TenantId != null)
+                query.Where(s => s.TenantId == request.TenantId);
+
+            if (request.AppId != null)
+                query.Where(s => s.AppId == request.AppId);
+
+            return new SmoothStatusResponse
+            {
+                Data = Db.Select<SmoothCounter>(query)
+            };
         }
 
-        private void PublishMultipleByApp(Dictionary<Guid, int> amountToPublishByApp)
+        public SmoothReleaseRequest Post(SmoothReleaseRequest request)
         {
-            var sum = amountToPublishByApp.Sum(a => a.Value);
-            while (amountToPublishByApp.Count > 0)
+            var sum = request.Data.Sum(a => a.Amount);
+            while (request.Data.Count > 0)
             {
-                var list = Next(amountToPublishByApp.Select(d => d.Key).ToList());
-                var toPublish = PublishMultipleByAppFilter(amountToPublishByApp, list);
+                var list = Get(new SmoothNextRequest()).Data; // amountToPublishByApp.Select(d => d.Key).ToList());
+                var toPublish = PublishMultipleByAppFilter(request, list);
 
                 toPublish.ForEach(s => s.Published = true);
                 toPublish.ForEach(s => _bus.Publish(s));
                 Db.SaveAll(toPublish);
-                
-                var newSum = amountToPublishByApp.Sum(a => a.Value);
-                
+
+                var newSum = request.Data.Sum(a => a.Amount);
+
                 if (newSum == sum)
                     break;
-                
+
                 sum = newSum;
             }
+
+            return request;
         }
 
-        private static List<Smooth> PublishMultipleByAppFilter(Dictionary<Guid, int> amountToPublishByApp, IReadOnlyCollection<Smooth> list)
+        private static List<Smooth> PublishMultipleByAppFilter(SmoothReleaseRequest release,
+            IReadOnlyCollection<Smooth> list)
         {
             var toPublish = new List<Smooth>();
-            foreach (var key in amountToPublishByApp.Keys.ToList())
+
+            foreach (var r in release.Data)
             {
-                var value = amountToPublishByApp[key];
-                var next = list.Where(e => e.AppId == key).Take(value).ToList();
+                var value = r.Amount;
+                var next = list.Where(e => e.AppId == r.AppId).Take(value).ToList();
 
                 toPublish.AddRange(next);
 
-                value = value - next.Count();
-
-                if (value == 0)
-                    amountToPublishByApp.RemoveKey(key);
-                else
-                    amountToPublishByApp[key] = value;
+                r.Amount = value - next.Count();
             }
+
+            release.Data.RemoveAll(r => r.Amount == 0);
+
             return toPublish;
         }
 
-        private static Dictionary<Guid, int> AmountToPublishByApp(IEnumerable<SmoothApp> apps, IList<SmoothCounter> counters,
+        private static SmoothReleaseRequest AmountToPublishByApp(IEnumerable<SmoothApp> apps,
+            IList<SmoothCounter> counters,
             TimeSpan lastTimeSpan, TimeSpan nextTimeSpan)
         {
-            var amountToPublishByApp = new Dictionary<Guid, int>();
+            var amountToPublishByApp = (from a in apps
+                let speedCoefficient = nextTimeSpan / lastTimeSpan
+                let publishedAmount = counters.SingleOrDefault(c => c.AppId == a.Id && c.Published)?.Count ?? 0
+                let amount = a.Limit.Amount * speedCoefficient + (a.Limit.Amount - publishedAmount) * speedCoefficient
+                where !(amount <= 0)
+                select new SmoothRelease {AppId = a.Id, Amount = (int) Math.Ceiling(amount)}).ToList();
 
-            foreach (var a in apps)
+            return new SmoothReleaseRequest
             {
-                var speedCoefficient = nextTimeSpan / lastTimeSpan;
-                var publishedAmount = counters.SingleOrDefault(c => c.AppId == a.Id && c.Published)?.Count ?? 0;
-
-                // speed dictated by limit + progressive retroaction to reach the speed
-                var amount = a.Limit.Amount * speedCoefficient + (a.Limit.Amount - publishedAmount) * speedCoefficient;
-
-                if (amount <= 0)
-                    continue;
-
-                amountToPublishByApp.Add(a.Id, (int) Math.Ceiling(amount));
-            }
-            return amountToPublishByApp;
+                Data = amountToPublishByApp
+            };
         }
     }
 }
