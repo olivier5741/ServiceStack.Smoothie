@@ -2,6 +2,7 @@ using System;
 
 namespace ServiceStack.Smoothie.Test
 {
+    [Route("/smooth/status")]
     public class SmoothStatusRequest : IGet, IReturn<SmoothStatusResponse>
     {
         public DateTime From { get; set; }

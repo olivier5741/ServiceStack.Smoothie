@@ -2,6 +2,7 @@ using System;
 
 namespace ServiceStack.Smoothie.Test
 {
+    [Route("/alarm", "POST")]
     public class Alarm
     {
         // ReSharper disable once UnusedAutoPropertyAccessor.Global

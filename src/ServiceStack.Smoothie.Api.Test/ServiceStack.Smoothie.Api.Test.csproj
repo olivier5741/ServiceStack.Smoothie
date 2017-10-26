@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="EasyNetQ" Version="2.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="2.0.0" />
+    <PackageReference Include="ServiceStack.Api.OpenApi.Core" Version="1.0.44" />
+    <PackageReference Include="ServiceStack.Core" Version="1.0.44" />
+    <PackageReference Include="ServiceStack.OrmLite.Sqlite.Core" Version="1.0.44" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Test\ServiceStack.Smoothie.Test.csproj">
+      <Project>{BEB919EE-C865-4F4A-A94D-20F4F77DD7DE}</Project>
+      <Name>ServiceStack.Smoothie.Test</Name>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

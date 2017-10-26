@@ -2,6 +2,8 @@ using System;
 
 namespace ServiceStack.Smoothie.Test
 {
+
+    [Route("/alarm", "POST")]
     public class SmoothNextRequest : IGet, IReturn<SmoothNextResponse>
     {
         public Guid? AppId { get; set; }

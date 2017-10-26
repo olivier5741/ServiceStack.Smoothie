@@ -3,6 +3,7 @@ using System.Runtime.Serialization;
 
 namespace ServiceStack.Smoothie.Test
 {
+    [Route("/smooth", "POST")]
     public class Smooth
     {
         [IgnoreDataMember]
