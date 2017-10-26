@@ -62,8 +62,7 @@ namespace ServiceStack.Smoothie.Test
 
         private void Publish(Dictionary<Guid, int> amountToPublishByApp)
         {
-            // TODO dangerous zone, a while is not a good idea
-            // Fool proof if amount to publishByApp stays the same, then break the loop
+            var sum = amountToPublishByApp.Sum(a => a.Value);
             while (amountToPublishByApp.Count > 0)
             {
                 var list = Next(amountToPublishByApp.Select(d => d.Key).ToList());
@@ -72,6 +71,13 @@ namespace ServiceStack.Smoothie.Test
                 toPublish.ForEach(s => s.Published = true);
                 toPublish.ForEach(s => _bus.Publish(s));
                 Db.SaveAll(toPublish);
+                
+                var newSum = amountToPublishByApp.Sum(a => a.Value);
+                
+                if (newSum == sum)
+                    break;
+                
+                sum = newSum;
             }
         }
 
