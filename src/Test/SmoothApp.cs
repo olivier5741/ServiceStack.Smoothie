@@ -6,10 +6,10 @@ namespace ServiceStack.Smoothie.Test
     {
         public Guid Id { get; set; }
         
-        public Guid AppId { get; set; }
-        
+        public Guid TenantId { get; set; }
+
         public SmoothLimitPerHour Limit { get; set; }
-        
+
         public bool Inactive { get; set; }
     }
 }

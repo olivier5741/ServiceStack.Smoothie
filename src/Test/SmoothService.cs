@@ -32,12 +32,22 @@ namespace ServiceStack.Smoothie.Test
             return new SmoothNextResponse {Data = Db.Select(query)};
         }
 
+        // TODO authorization
+        // TODO add scenario, campaign and flow
         public Smooth Post(Smooth request)
         {
             var app = Db.SingleById<SmoothApp>(request.AppId);
 
             if (app == null)
                 throw new ArgumentNullException("App does not exist");
+
+            request.TenantId = app.TenantId;
+            request.AppId = app.Id;
+            
+            request.Id = Guid.NewGuid();
+            request.Smoothed = null;
+            request.Cancelled = false;
+            request.Published = false;
 
             Db.Save(request);
 

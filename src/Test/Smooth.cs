@@ -1,5 +1,7 @@
 using System;
 using System.Runtime.Serialization;
+using ServiceStack.DataAnnotations;
+using ServiceStack.FluentValidation;
 
 namespace ServiceStack.Smoothie.Test
 {
@@ -7,6 +9,7 @@ namespace ServiceStack.Smoothie.Test
     public class Smooth
     {
         [IgnoreDataMember]
+        [AutoIncrement]
         public int OrderId { get; set; } // FIFO, autoincrement
 
         public Guid Id { get; set; }
@@ -19,5 +22,17 @@ namespace ServiceStack.Smoothie.Test
         public bool Published { get; set; }
         
         public bool Cancelled { get; set; }
+    }
+
+    public class SmoothValidator : AbstractValidator<Smooth>
+    {
+        public SmoothValidator()
+        {
+            RuleSet(ApplyTo.Post, () =>
+            {
+                RuleFor(s => s.AppId).NotEmpty();
+            });
+            
+        }
     }
 }
