@@ -1,7 +1,6 @@
 using System;
 using System.Runtime.Serialization;
 using ServiceStack.DataAnnotations;
-using ServiceStack.FluentValidation;
 
 namespace ServiceStack.Smoothie.Test
 {
@@ -22,17 +21,5 @@ namespace ServiceStack.Smoothie.Test
         public bool Published { get; set; }
         
         public bool Cancelled { get; set; }
-    }
-
-    public class SmoothValidator : AbstractValidator<Smooth>
-    {
-        public SmoothValidator()
-        {
-            RuleSet(ApplyTo.Post, () =>
-            {
-                RuleFor(s => s.AppId).NotEmpty();
-            });
-            
-        }
     }
 }

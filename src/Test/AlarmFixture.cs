@@ -51,7 +51,7 @@ namespace ServiceStack.Smoothie.Test
             var alarm = _svc.Post(new Alarm{Time = DateTime.Now.AddHours(-1)});
             _svc.Post(new AlarmCancel {Id = alarm.Id});
             
-            Assert.True(_svc.Get(alarm).Inactive);
+            Assert.True(_svc.Get(alarm).Cancelled);
         }
 
       //  [Test] // commented because will fail on app veyor

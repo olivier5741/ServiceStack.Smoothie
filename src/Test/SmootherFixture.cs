@@ -9,7 +9,16 @@ using ServiceStack.Text;
 
 namespace ServiceStack.Smoothie.Test
 {
-    
+    [TestFixture]
+    public class UtilityFixture
+    {
+        [Test]
+        public void GuidGeneration()
+        {
+            Guid.NewGuid().PrintDump();
+        }
+    }
+
     [TestFixture]
     public class SmootherFixture
     {
@@ -28,16 +37,16 @@ namespace ServiceStack.Smoothie.Test
                     Amount = 5
                 }
             };
-            
+
             JsConfig.DateHandler = DateHandler.ISO8601;
             JsConfig.TimeSpanHandler = TimeSpanHandler.DurationFormat;
-            
-            _appHost = new BasicAppHost().Init();
-            var container =  _appHost.Container;
 
-            //container.Register<IRedisClientsManager>(c => 
-              //  new RedisManagerPool("localhost"));
-            
+            _appHost = new BasicAppHost().Init();
+            var container = _appHost.Container;
+
+            container.Register<IRedisClientsManager>(c =>
+                new RedisManagerPool("localhost"));
+
             container.Register<IDbConnectionFactory>(
                 new OrmLiteConnectionFactory(":memory:", SqliteDialect.Provider));
 
@@ -61,14 +70,14 @@ namespace ServiceStack.Smoothie.Test
         {
             Guid.NewGuid().PrintDump();
         }
-        
+
         [Test]
         public void Test()
         {
             _svc.Post(new Smooth {Id = Guid.NewGuid(), AppId = _app.Id});
-            
-            _svc.Play(TimeSpan.FromMinutes(30),TimeSpan.FromSeconds(30));
-            
+
+            _svc.Play(TimeSpan.FromMinutes(30), TimeSpan.FromSeconds(30));
+
             Assert.True(true);
         }
     }

@@ -33,7 +33,7 @@ namespace ServiceStack.Smoothie.Test
         }
 
         // TODO authorization
-        // TODO add scenario, campaign and flow
+        // TODO add scenario, campaign and flowe
         public Smooth Post(Smooth request)
         {
             var app = Db.SingleById<SmoothApp>(request.AppId);

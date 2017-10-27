@@ -38,10 +38,21 @@ namespace ServiceStack.Smoothie.Api.Test
 
             using (var sess = container.Resolve<IDbConnectionFactory>().Open())
             {
+                sess.CreateTable<AlarmApp>();
+                sess.CreateTable<Alarm>();
+                
+                var app0 = new AlarmApp
+                {
+                    Id = new Guid("139ab7b8ab49417185fe8a2c7ff37042"),
+                    TenantId = new Guid("bd43f135-eb3b-4006-b176-ec7c6f58f12d")
+                };
+
+                sess.Save(app0);
+                
                 sess.CreateTable<SmoothApp>();
                 sess.CreateTable<Smooth>();
                 
-                var app = new SmoothApp
+                var app1 = new SmoothApp
                 {
                     Id = new Guid("d8927a9c-7512-4b1b-9ed7-c6d2bdd68e60"),
                     TenantId = new Guid("bd43f135-eb3b-4006-b176-ec7c6f58f12d"),
@@ -50,8 +61,18 @@ namespace ServiceStack.Smoothie.Api.Test
                         Amount = 5
                     }
                 };
+                
+                var app2 = new SmoothApp
+                {
+                    Id = new Guid("6f11eb45-a35d-4f5d-ac17-96365acf9c9d"),
+                    TenantId = new Guid("67be595b-4686-43e1-b54e-8bba209b5de7"),
+                    Limit = new SmoothLimitPerHour
+                    {
+                        Amount = 2
+                    }
+                };
 
-                sess.Save(app);
+                sess.SaveAll(new []{app1, app2});
             }
         }
     }

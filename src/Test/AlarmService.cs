@@ -17,8 +17,17 @@ namespace ServiceStack.Smoothie.Test
         
         public Alarm Post(Alarm request)
         {
-            if(request.Id == Guid.Empty)
-                request.Id = Guid.NewGuid();
+            var app = Db.SingleById<AlarmApp>(request.AppId);
+
+            if (app == null)
+                throw new ArgumentNullException("App does not exist");
+
+            request.TenantId = app.TenantId;
+            request.AppId = app.Id;
+            
+            request.Id = Guid.NewGuid();
+            request.Cancelled = false;
+            request.Published = false;
 
             Db.Save(request);
             
@@ -37,7 +46,7 @@ namespace ServiceStack.Smoothie.Test
             if (alarm.Published)
                 throw new ArgumentException("Alarm already published");
             
-            alarm.Inactive = true;
+            alarm.Cancelled = true;
             
             Db.Save(alarm);
         }
@@ -45,7 +54,7 @@ namespace ServiceStack.Smoothie.Test
         public void Play()
         {
             // best to use redis afterwards
-            var alarms = Db.Select<Alarm>(a => a.Time <= DateTime.Now && a.Inactive == false && a.Published == false);
+            var alarms = Db.Select<Alarm>(a => a.Time <= DateTime.Now && a.Cancelled == false && a.Published == false);
             alarms.ForEach(a =>
             {
                 a.Published = true;
