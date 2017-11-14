@@ -10,9 +10,18 @@ using ServiceStack.Redis;
 using ServiceStack.Redis.Generic;
 using ServiceStack.Testing;
 using ServiceStack.Text;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace ServiceStack.Smoothie.Test
 {
+    public class HeartBeatUnprecise
+    {
+        public DateTime Time { get; set; }
+        public TimeSpan Interval { get; set; }
+    }
+
     public class HeartBeat
     {
         public DateTime Time { get; set; }
@@ -36,14 +45,14 @@ namespace ServiceStack.Smoothie.Test
             _timer.Elapsed += (sender, args) =>
             {
                 // might be better to get it from dependency injection ...
-                bus.Publish(new HeartBeat {Time = args.SignalTime, Interval = _interval});
+                bus.Publish(new HeartBeatUnprecise {Time = args.SignalTime, Interval = _interval});
             };
         }
 
         public void Start()
         {
             _timer.Enabled = true;
-            _bus.Subscribe<HeartBeat>("peacemaker", h =>
+            _bus.Subscribe<HeartBeatUnprecise>("peacemaker", h =>
             {
                 using (var redis = _redisClientsManager.GetClient())
                 {
@@ -52,17 +61,67 @@ namespace ServiceStack.Smoothie.Test
 
                     var value = rounded.ToString("O");
                     var isNotPresent = redis.AddItemToSortedSet("test:peacemaker", value);
-                    value.PrintDump();
 
-                    if (isNotPresent)
-                        h.PrintDump();
+                    if (isNotPresent == false)
+                        return;
+
+
+                    
+                    
+                    _bus.Publish(new HeartBeat
+                    {
+                        Time = rounded,
+                        Interval = _interval
+                    },rounded.Topic());
                 }
             });
+
+            _bus.Subscribe<HeartBeatUnprecise>("missing-beats", h =>
+            {
+                using (var redis = _redisClientsManager.GetClient())
+                {
+                    var from = h.Time.AddMinutes(2);
+                    var to = h.Time.AddMinutes(1);
+                    
+                    var list = redis.GetRangeFromSortedSetByHighestScore("test:peacemaker",from.ToString("O"),
+                        to.ToString("O"));
+
+                    var expected = new List<string>();
+
+                    for (var d = from.CreateCopy(); d < to.CreateCopy(); d = d.Add(_interval))
+                    {
+                        expected.Add(d.ToString("O"));
+                    }
+
+                    var missing = list.Except(list);
+                    
+                    foreach (var s in missing)
+                    {
+                        _bus.Publish(new HeartBeatUnprecise {Time = DateTime.Parse(s), Interval = _interval});
+                    }
+                }
+            });
+
+            _bus.Subscribe<HeartBeat>("peacemaker", h =>
+            {
+                h.PrintDump();
+            }, cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
         }
+
+        
 
         public void Dispose()
         {
             _timer?.Dispose();
+        }
+    }
+
+    public static class HeartBeatExts
+    {
+        public static string Topic(this DateTime d)
+        {
+            var t = $"d.{d.Day}.wd.{d.DayOfWeek.ToString().ToLower()}.h.{d.Hour}.m.{d.Minute}.s.{d.Second}.ms.{d.Millisecond}";
+            return t;
         }
     }
 
@@ -76,6 +135,7 @@ namespace ServiceStack.Smoothie.Test
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
+            JsConfig.DateHandler = DateHandler.ISO8601;
             _bus = RabbitHutch.CreateBus("host=localhost");
             _redisClientsManager = new RedisManagerPool("localhost");
             _heartbeatSvc = new HeartBeatClient(_bus, _redisClientsManager, TimeSpan.FromMilliseconds(100));
