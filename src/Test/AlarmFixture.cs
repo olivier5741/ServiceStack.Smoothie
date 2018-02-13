@@ -120,6 +120,16 @@ namespace ServiceStack.Smoothie.Test
     {
         public static string Topic(this DateTime d)
         {
+            https://fr.wikipedia.org/wiki/Cron
+            // minute hour day month day of week mm hh jj MMM JJJ
+            /*
+            * : à chaque unité (0, 1, 2, 3, 4...)
+            5,8 : les unités 5 et 8
+            2-5 : les unités de 2 à 5 (2, 3, 4, 5)
+            * /3 : toutes les 3 unités (0, 3, 6, 9...)
+            10-20/3 : toutes les 3 unités, entre la dixième et la vingtième (10, 13, 16, 19)
+             */
+            
             var t = $"d.{d.Day}.wd.{d.DayOfWeek.ToString().ToLower()}.h.{d.Hour}.m.{d.Minute}.s.{d.Second}.ms.{d.Millisecond}";
             return t;
         }
@@ -152,6 +162,7 @@ namespace ServiceStack.Smoothie.Test
         [Test]
         public void HeartBeatTest()
         {
+            
             _heartbeatSvc.Start();
             Thread.Sleep(2000);
         }
@@ -171,15 +182,19 @@ namespace ServiceStack.Smoothie.Test
 
             _appHost = new BasicAppHost().Init();
             var container = _appHost.Container;
-
-            container.Register<IRedisClientsManager>(c =>
-                new RedisManagerPool("localhost"));
+            
+            
+            var redisClientsManager = new RedisManagerPool("localhost");
+            container.Register<IRedisClientsManager>(c => redisClientsManager);
 
             container.Register<IDbConnectionFactory>(
                 new OrmLiteConnectionFactory(":memory:", SqliteDialect.Provider));
 
             _bus = RabbitHutch.CreateBus("host=localhost");
             container.Register(_bus);
+            
+            var heartbeatSvc = new HeartBeatClient(_bus, redisClientsManager, TimeSpan.FromMilliseconds(100));
+            container.Register(c => heartbeatSvc);
 
             container.RegisterAutoWired<AlarmService>();
 
@@ -190,13 +205,24 @@ namespace ServiceStack.Smoothie.Test
             }
 
             _svc = container.Resolve<AlarmService>();
+
+            _bus.Subscribe<HeartBeat>("alarm", a =>
+            {
+                container.Resolve<AlarmService>().Play();
+                
+            }, cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
         }
 
         [Test]
         public void CreateAndCancel()
         {
             var alarm = _svc.Post(new Alarm {Time = DateTime.Now.AddHours(-1)});
-            _svc.Post(new AlarmCancel {Id = alarm.Id});
+
+            var heartBeat = _appHost.Resolve<HeartBeatClient>();
+            heartBeat.Start();
+            Thread.Sleep(2000);
+            heartBeat.Dispose();
+            //_svc.Post(new AlarmCancel {Id = alarm.Id});
 
             Assert.True(_svc.Get(alarm).Cancelled);
         }
