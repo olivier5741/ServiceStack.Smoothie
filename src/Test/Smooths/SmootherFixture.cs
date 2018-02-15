@@ -77,7 +77,7 @@ namespace ServiceStack.Smoothie.Test.Smooths
         {
             _svc.Post(new Smooth {Id = Guid.NewGuid(), AppId = _app.Id});
 
-            _svc.Play(TimeSpan.FromMinutes(30), TimeSpan.FromSeconds(30));
+            _svc.Play(TimeSpan.FromSeconds(30));
 
             Assert.True(true);
         }

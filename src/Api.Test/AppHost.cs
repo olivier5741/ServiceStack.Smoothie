@@ -47,6 +47,11 @@ namespace ServiceStack.Smoothie.Api.Test
                 a.PrintDump();
             });
             
+            bus.Subscribe<Smooth>("api", a =>
+            {
+                a.PrintDump();
+            });
+            
             Plugins.Add(new ValidationFeature());
             container.RegisterValidators(typeof(SmoothValidator).Assembly);
             
