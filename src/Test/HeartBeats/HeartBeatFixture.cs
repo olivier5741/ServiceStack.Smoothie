@@ -4,6 +4,7 @@ using EasyNetQ;
 using NUnit.Framework;
 using ServiceStack.Redis;
 using ServiceStack.Text;
+using ServiceStack.Smoothie.Test.Interfaces;
 
 namespace ServiceStack.Smoothie.Test.HeartBeats
 {
@@ -32,11 +33,14 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
         }
 
         [Test]
-        public void HeartBeatTest()
+        public void Morethan15HeartbeatsIn2Seconds()
         {
+            var counter = 0;
+            _bus.Subscribe<HeartBeat>("test", a => counter++);
             
             _heartbeatSvc.Start();
-            Thread.Sleep(2000);
+            Thread.Sleep(TimeSpan.FromSeconds(2));
+            Assert.GreaterOrEqual(counter,15);
         }
     }
 }
