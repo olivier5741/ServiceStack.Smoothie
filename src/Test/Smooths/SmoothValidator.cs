@@ -1,15 +1,15 @@
 using ServiceStack.FluentValidation;
+using ServiceStack.Smoothie.Test.Interfaces;
 
 namespace ServiceStack.Smoothie.Test
 {
-    public class AlarmValidator : AbstractValidator<Alarm>
+    public class SmoothValidator : AbstractValidator<Smooth>
     {
-        public AlarmValidator()
+        public SmoothValidator()
         {
             RuleSet(ApplyTo.Post, () =>
             {
                 RuleFor(s => s.AppId).NotEmpty();
-                RuleFor(s => s.Time).NotEmpty();
             });
             
         }

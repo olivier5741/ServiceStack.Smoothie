@@ -2,7 +2,7 @@ using System;
 using System.Runtime.Serialization;
 using ServiceStack.DataAnnotations;
 
-namespace ServiceStack.Smoothie.Test
+namespace ServiceStack.Smoothie.Test.Interfaces
 {
     [Route("/smooth", "POST")]
     public class Smooth

@@ -4,10 +4,11 @@ using NUnit.Framework;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
 using ServiceStack.Redis;
+using ServiceStack.Smoothie.Test.Interfaces;
 using ServiceStack.Testing;
 using ServiceStack.Text;
 
-namespace ServiceStack.Smoothie.Test
+namespace ServiceStack.Smoothie.Test.Smooths
 {
     [TestFixture]
     public class UtilityFixture

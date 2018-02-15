@@ -1,9 +1,9 @@
 using System;
-using System.Collections.Generic;
-using ServiceStack.OrmLite;
 using EasyNetQ;
+using ServiceStack.OrmLite;
+using ServiceStack.Smoothie.Test.Interfaces;
 
-namespace ServiceStack.Smoothie.Test
+namespace ServiceStack.Smoothie.Test.Alarms
 {
     // ReSharper disable once ClassNeverInstantiated.Global
     public class AlarmService : Service
@@ -15,6 +15,7 @@ namespace ServiceStack.Smoothie.Test
             _bus = bus;
         }
         
+        // Schedule an alarm. When time is right, it will be published.
         public Alarm Post(Alarm request)
         {
             var app = Db.SingleById<AlarmApp>(request.AppId);
@@ -39,6 +40,7 @@ namespace ServiceStack.Smoothie.Test
             return Db.SingleById<Alarm>(request.Id);
         }
 
+        // Cancel the alarm (if not yet published)
         public void Post(AlarmCancel request)
         {
             var alarm = Db.SingleById<Alarm>(request.Id);
@@ -51,6 +53,7 @@ namespace ServiceStack.Smoothie.Test
             Db.Save(alarm);
         }
 
+        // Get all expired alarms (also not cancelled and not published) and publish them
         public void Play()
         {
             // best to use redis afterwards
@@ -58,8 +61,9 @@ namespace ServiceStack.Smoothie.Test
             alarms.ForEach(a =>
             {
                 a.Published = true;
+                // at most once
                 Db.Save(a);
-                Redis.Set("test:alarm:"+a.Id, a, TimeSpan.FromMinutes(1));
+                Redis.Set("test:alarm:"+a.Id, a, TimeSpan.FromMinutes(1)); // Don't remember why I need this
                 _bus.Publish(a);
             });
         }

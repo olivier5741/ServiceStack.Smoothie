@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ServiceStack.Smoothie.Test
+namespace ServiceStack.Smoothie.Test.Interfaces
 {
     public class SmoothStatusResponse
     {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EasyNetQ;
 using ServiceStack.OrmLite;
+using ServiceStack.Smoothie.Test.Interfaces;
 
 namespace ServiceStack.Smoothie.Test
 {
@@ -15,6 +16,7 @@ namespace ServiceStack.Smoothie.Test
             _bus = bus;
         }
 
+        // Don't remember what this is used gor
         public SmoothNextResponse Get(SmoothNextRequest request)
         {
             var query = Db.From<Smooth>()
@@ -34,6 +36,7 @@ namespace ServiceStack.Smoothie.Test
 
         // TODO authorization
         // TODO add scenario, campaign and flowe
+        // Create a ressource to fluidify
         public Smooth Post(Smooth request)
         {
             var app = Db.SingleById<SmoothApp>(request.AppId);
@@ -54,6 +57,8 @@ namespace ServiceStack.Smoothie.Test
             return request;
         }
 
+        
+        // Get expired ressources and release them
         public void Play(TimeSpan lastTimeSpan, TimeSpan nextTimeSpan)
         {
             var now = DateTime.Now;
@@ -66,6 +71,7 @@ namespace ServiceStack.Smoothie.Test
             Post(amountToPublishByApp);
         }
 
+        // get amount of ressources not yet released or lately released (greater than request.From) 
         public SmoothStatusResponse Get(SmoothStatusRequest request)
         {
             var query = Db.From<Smooth>()
@@ -86,6 +92,7 @@ namespace ServiceStack.Smoothie.Test
             };
         }
 
+        // trigger ressources
         public SmoothReleaseRequest Post(SmoothReleaseRequest request)
         {
             var sum = request.Data.Sum(a => a.Amount);
@@ -129,6 +136,7 @@ namespace ServiceStack.Smoothie.Test
             return toPublish;
         }
 
+        // amount of ressources to release by app for a given time range
         private static SmoothReleaseRequest AmountToPublishByApp(IEnumerable<SmoothApp> apps,
             IList<SmoothCounter> counters,
             TimeSpan lastTimeSpan, TimeSpan nextTimeSpan)
@@ -136,7 +144,8 @@ namespace ServiceStack.Smoothie.Test
             var amountToPublishByApp = (from a in apps
                 let speedCoefficient = nextTimeSpan / lastTimeSpan
                 let publishedAmount = counters.SingleOrDefault(c => c.AppId == a.Id && c.Published)?.Count ?? 0
-                let amount = a.Limit.Amount * speedCoefficient + (a.Limit.Amount - publishedAmount) * speedCoefficient
+                // number too release with correction based on last timespan
+                let amount = a.Limit.Amount * speedCoefficient + (a.Limit.Amount - publishedAmount) * speedCoefficient 
                 where !(amount <= 0)
                 select new SmoothRelease {AppId = a.Id, Amount = (int) Math.Ceiling(amount)}).ToList();
 

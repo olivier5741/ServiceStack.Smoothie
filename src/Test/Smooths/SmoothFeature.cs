@@ -1,8 +1,9 @@
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
+using ServiceStack.Smoothie.Test.Interfaces;
 using ServiceStack.Validation;
 
-namespace ServiceStack.Smoothie.Test
+namespace ServiceStack.Smoothie.Test.Smooths
 {
     public class SmoothFeature : IPlugin
     {

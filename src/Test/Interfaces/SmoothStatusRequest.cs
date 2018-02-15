@@ -1,6 +1,6 @@
 using System;
 
-namespace ServiceStack.Smoothie.Test
+namespace ServiceStack.Smoothie.Test.Interfaces
 {
     [Route("/smooth/status", "GET")]
     public class SmoothStatusRequest : IGet, IReturn<SmoothStatusResponse>

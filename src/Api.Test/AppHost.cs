@@ -6,6 +6,9 @@ using ServiceStack.Api.OpenApi;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
 using ServiceStack.Smoothie.Test;
+using ServiceStack.Smoothie.Test.Alarms;
+using ServiceStack.Smoothie.Test.Interfaces;
+using ServiceStack.Smoothie.Test.Smooths;
 using ServiceStack.Text;
 using ServiceStack.Validation;
 

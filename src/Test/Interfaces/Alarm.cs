@@ -1,6 +1,6 @@
 using System;
 
-namespace ServiceStack.Smoothie.Test
+namespace ServiceStack.Smoothie.Test.Interfaces
 {
     [Route("/alarm", "POST,GET")]
     public class Alarm : IPost, IReturn<Alarm>

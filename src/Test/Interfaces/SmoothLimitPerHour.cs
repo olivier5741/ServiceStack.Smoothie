@@ -1,4 +1,4 @@
-namespace ServiceStack.Smoothie.Test
+namespace ServiceStack.Smoothie.Test.Interfaces
 {
     public class SmoothLimitPerHour
     {
