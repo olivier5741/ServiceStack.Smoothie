@@ -18,6 +18,7 @@ namespace ServiceStack.Smoothie.Test.Alarms
         private readonly AlarmService _svc;
         private readonly ServiceStackHost _appHost;
         private readonly IBus _bus;
+        private AlarmApp _alarmApp;
 
         public AlarmFixture()
         {
@@ -26,7 +27,6 @@ namespace ServiceStack.Smoothie.Test.Alarms
 
             _appHost = new BasicAppHost().Init();
             var container = _appHost.Container;
-            
             
             var redisClientsManager = new RedisManagerPool("localhost");
             container.Register<IRedisClientsManager>(c => redisClientsManager);
@@ -45,7 +45,11 @@ namespace ServiceStack.Smoothie.Test.Alarms
             using (var db = container.Resolve<IDbConnectionFactory>().Open())
             {
                 db.DropAndCreateTable<Alarm>();
-                db.Save(new Alarm {Id = Guid.NewGuid(), Time = DateTime.Now.AddMinutes(-1)});
+                db.DropAndCreateTable<AlarmApp>();
+                
+                _alarmApp = new AlarmApp {Id = Guid.NewGuid(), TenantId = Guid.NewGuid()};
+                db.Save(_alarmApp);
+                db.Save(new Alarm {Id = Guid.NewGuid(), AppId = _alarmApp.Id, Time = DateTime.Now.AddMinutes(-1)});
             }
 
             _svc = container.Resolve<AlarmService>();
@@ -56,32 +60,33 @@ namespace ServiceStack.Smoothie.Test.Alarms
                 
             }, cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
         }
-
+        
         [Test]
-        public void CreateAndCancel()
-        {
-            var alarm = _svc.Post(new Alarm {Time = DateTime.Now.AddHours(-1)});
-
-            var heartBeat = _appHost.Resolve<HeartBeatClient>();
-            heartBeat.Start();
-            Thread.Sleep(2000);
-            heartBeat.Dispose();
-            //_svc.Post(new AlarmCancel {Id = alarm.Id});
-
-            Assert.True(_svc.Get(alarm).Cancelled);
-        }
-
-        //  [Test] // commented because will fail on app veyor
-        public void Timer()
+        public void SubscribeToAlarmAndPostAlarmInThePast()
         {
             var counter = 0;
             _bus.Subscribe<Alarm>("test", a => counter++);
+            
+            _svc.Post(new Alarm {Time = DateTime.Now.AddHours(-1), AppId = _alarmApp.Id});
 
             var t = new Timer(o => { _svc.Play(); }, null, new TimeSpan(), TimeSpan.FromSeconds(1));
             Thread.Sleep(TimeSpan.FromSeconds(3));
             Assert.True(counter > 0);
         }
 
+        [Test]
+        public void CreateAlarmAndCancelThrowsAlreadyPublished()
+        {
+            var alarm = _svc.Post(new Alarm {Time = DateTime.Now.AddHours(-1), AppId = _alarmApp.Id});
+
+            var heartBeat = _appHost.Resolve<HeartBeatClient>();
+            
+            heartBeat.Start();
+            Thread.Sleep(2000);
+            heartBeat.Dispose();
+
+            Assert.Throws<ArgumentException>(() => _svc.Post(new AlarmCancel {Id = alarm.Id}));
+        }
 
         public void RedisTest()
         {
