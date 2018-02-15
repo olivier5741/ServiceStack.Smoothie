@@ -26,7 +26,7 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
             _timer.Elapsed += (sender, args) =>
             {
                 // might be better to get it from dependency injection ...
-                bus.Publish(new HeartBeatUnprecise {Time = args.SignalTime, Interval = _interval});
+                bus.Publish(new HeartBeatUnprecise {Time = args.SignalTime, Interval = _interval},args.SignalTime.Topic());
             };
         }
 
@@ -64,8 +64,8 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
                 {
                     var from = h.Time.AddMinutes(2); // why is from higher than to ??
                     var to = h.Time.AddMinutes(1);
-                    
-                    var list = redis.GetRangeFromSortedSetByHighestScore("test:peacemaker",from.ToString("O"),
+
+                    var list = redis.GetRangeFromSortedSetByHighestScore("test:peacemaker", from.ToString("O"),
                         to.ToString("O"));
 
                     var expected = new List<string>();
@@ -76,13 +76,13 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
                     }
 
                     var missing = list.Except(list);
-                    
+
                     foreach (var s in missing)
                     {
                         _bus.Publish(new HeartBeatUnprecise {Time = DateTime.Parse(s), Interval = _interval});
                     }
                 }
-            });
+            }, cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
 
             // test : to remove later
             _bus.Subscribe<HeartBeat>("peacemaker", h =>

@@ -5,6 +5,7 @@ using Funq;
 using ServiceStack.Api.OpenApi;
 using ServiceStack.Data;
 using ServiceStack.OrmLite;
+using ServiceStack.Redis;
 using ServiceStack.Smoothie.Test;
 using ServiceStack.Smoothie.Test.Alarms;
 using ServiceStack.Smoothie.Test.Interfaces;
@@ -32,11 +33,19 @@ namespace ServiceStack.Smoothie.Api.Test
         // Configure your AppHost with the necessary configuration and dependencies your App needs
         public override void Configure(Container container)
         {
+            var redisClientsManager = new RedisManagerPool("localhost");
+            container.Register<IRedisClientsManager>(c => redisClientsManager);
+            
             container.Register<IDbConnectionFactory>(
                 new OrmLiteConnectionFactory(":memory:", SqliteDialect.Provider));
 
             var bus = RabbitHutch.CreateBus("host=localhost");
             container.Register(bus);
+
+            bus.Subscribe<Alarm>("api", a =>
+            {
+                a.PrintDump();
+            });
             
             Plugins.Add(new ValidationFeature());
             container.RegisterValidators(typeof(SmoothValidator).Assembly);

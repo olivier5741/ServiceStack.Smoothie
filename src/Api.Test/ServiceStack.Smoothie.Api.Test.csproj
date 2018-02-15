@@ -12,6 +12,7 @@
         <PackageReference Include="ServiceStack.Api.OpenApi.Core" Version="5.0.2"/>
         <PackageReference Include="ServiceStack.Core" Version="5.0.2"/>
         <PackageReference Include="ServiceStack.OrmLite.Sqlite.Core" Version="5.0.2"/>
+        <PackageReference Include="ServiceStack.Redis" Version="5.0.2"/>
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\Test\ServiceStack.Smoothie.Test.csproj">
