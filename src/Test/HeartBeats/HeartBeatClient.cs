@@ -58,7 +58,8 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
 
             // check missing heartbeats based on heartbeats stored in Redis
             // publish unprecise heartbeats based on those missing
-            _bus.Subscribe<HeartBeatUnprecise>("missing-beats", h =>
+            // should be based on unprecise perhaps ??
+            _bus.Subscribe<HeartBeat>("missing-beats", h =>
             {
                 using (var redis = _redisClientsManager.GetClient())
                 {
@@ -82,12 +83,6 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
                         _bus.Publish(new HeartBeatUnprecise {Time = DateTime.Parse(s), Interval = _interval});
                     }
                 }
-            }, cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
-
-            // test : to remove later
-            _bus.Subscribe<HeartBeat>("peacemaker", h =>
-            {
-                h.PrintDump();
             }, cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
         }
 
