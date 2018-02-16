@@ -11,8 +11,6 @@ namespace ServiceStack.Smoothie.Test.Alarms
 {
     public class AlarmFeature : IPlugin, IPostInitPlugin
     {
-        private HeartBeatClient _heartBeatClient;
-
         public void Register(IAppHost appHost)
         {
             appHost.RegisterService<AlarmService>();
@@ -24,10 +22,7 @@ namespace ServiceStack.Smoothie.Test.Alarms
                 db.CreateTableIfNotExists<Alarm>();
             }
 
-            _heartBeatClient = new HeartBeatClient(appHost.TryResolve<IBus>(),
-                appHost.TryResolve<IRedisClientsManager>(), TimeSpan.FromMilliseconds(100));
-
-            appHost.GetContainer().Register(c => _heartBeatClient);
+            appHost.GetContainer().RegisterAutoWired<HeartBeatClient>();
         }
 
         public void AfterPluginsLoaded(IAppHost appHost)

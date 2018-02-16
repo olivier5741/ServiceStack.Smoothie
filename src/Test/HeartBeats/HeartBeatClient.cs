@@ -12,81 +12,105 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
     {
         private readonly IBus _bus;
         private readonly IRedisClientsManager _redisClientsManager;
-        private readonly System.Timers.Timer _timer;
-        private TimeSpan _interval;
+        
+        private System.Timers.Timer _timer;
+        
+        public TimeSpan Interval { get; set; } = TimeSpan.FromMilliseconds(100);
 
-        public HeartBeatClient(IBus bus, IRedisClientsManager redisClientsManager, TimeSpan interval)
+        public HeartBeatClient(IBus bus, IRedisClientsManager redisClientsManager)
         {
-            _interval = interval;
             _bus = bus;
             _redisClientsManager = redisClientsManager;
-            _timer = new System.Timers.Timer(_interval.Milliseconds);
+            
+            SetUpTimerForUnpreciseBeat();
+        }
 
-            // publish an unprecise heartbeat every x time
+        // publish an unprecise heartbeat every x time
+        private void SetUpTimerForUnpreciseBeat()
+        {
+            _timer = new System.Timers.Timer(Interval.Milliseconds);
+
             _timer.Elapsed += (sender, args) =>
             {
-                // might be better to get it from dependency injection ...
-                bus.Publish(new HeartBeatUnprecise {Time = args.SignalTime, Interval = _interval},args.SignalTime.Topic());
+                _bus.Publish(new HeartBeatUnprecise {Time = args.SignalTime, Interval = Interval},
+                    args.SignalTime.Topic());
             };
         }
 
         public void Start()
         {
             _timer.Enabled = true;
-            
-            // publish exactly one heartbeat based on the unprecise once (use Redis for duplicate check)
-            _bus.Subscribe<HeartBeatUnprecise>("peacemaker", h =>
-            {
-                using (var redis = _redisClientsManager.GetClient())
-                {
-                    var rounded = new DateTime((long) Math.Floor((double) h.Time.Ticks / _interval.Ticks) *
-                                               _interval.Ticks);
 
-                    var value = rounded.ToString("O");
-                    var isNotPresent = redis.AddItemToSortedSet("test:peacemaker", value);
+            _bus.Subscribe<HeartBeatUnprecise>("peacemaker", PublishBeat);
 
-                    if (isNotPresent == false)
-                        return;
-                    
-                    _bus.Publish(new HeartBeat
-                    {
-                        Time = rounded,
-                        Interval = _interval
-                    },rounded.Topic());
-                }
-            });
-
-            // check missing heartbeats based on heartbeats stored in Redis
-            // publish unprecise heartbeats based on those missing
-            // should be based on unprecise perhaps ??
-            _bus.Subscribe<HeartBeat>("missing-beats", h =>
-            {
-                using (var redis = _redisClientsManager.GetClient())
-                {
-                    var from = h.Time.AddMinutes(2); // why is from higher than to ??
-                    var to = h.Time.AddMinutes(1);
-
-                    var list = redis.GetRangeFromSortedSetByHighestScore("test:peacemaker", from.ToString("O"),
-                        to.ToString("O"));
-
-                    var expected = new List<string>();
-
-                    for (var d = from.CreateCopy(); d < to.CreateCopy(); d = d.Add(_interval))
-                    {
-                        expected.Add(d.ToString("O"));
-                    }
-
-                    var missing = list.Except(list);
-
-                    foreach (var s in missing)
-                    {
-                        _bus.Publish(new HeartBeatUnprecise {Time = DateTime.Parse(s), Interval = _interval});
-                    }
-                }
-            }, cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
+            // should be based on unprecise perhaps, yes better but did not work lately
+            _bus.Subscribe<HeartBeat>("missing-beats", HandleMissingBeats,
+                cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
         }
 
-        
+        // publish exactly one heartbeat based on the unprecise once (use Redis for duplicate check)
+        private void PublishBeat(HeartBeatUnprecise h)
+        {
+            var rounded = RoundTime(h);
+            var isNotPresent = AddBeatToRedis(rounded);
+
+            if (isNotPresent == false)
+                return;
+
+            _bus.Publish(new HeartBeat
+            {
+                Time = rounded,
+                Interval = Interval
+            }, rounded.Topic());
+        }
+
+        private bool AddBeatToRedis(DateTime rounded)
+        {
+            using (var redis = _redisClientsManager.GetClient())
+            {
+                return redis.AddItemToSortedSet("test:peacemaker", rounded.ToString("O"));
+            }
+        }
+
+        private DateTime RoundTime(HeartBeatUnprecise h)
+        {
+            return new DateTime((long) Math.Floor((double) h.Time.Ticks / Interval.Ticks) * Interval.Ticks);
+        }
+
+        // publish unprecise beats based on missing beats
+        private void HandleMissingBeats(HeartBeat h)
+        {
+            var from = h.Time.AddMinutes(-2);
+            var to = h.Time.AddMinutes(-1);
+
+            var missingBeats = ExpectedBeats(@from, to).Except(PublishedBeats(@from, to));
+
+            foreach (var s in missingBeats)
+                _bus.Publish(new HeartBeatUnprecise {Time = DateTime.Parse(s), Interval = Interval});
+        }
+
+        // check missing beats based on beats stored in Redis
+        private IEnumerable<string> PublishedBeats(DateTime @from, DateTime to)
+        {
+            using (var redis = _redisClientsManager.GetClient())
+            {
+                return redis.GetRangeFromSortedSetByHighestScore("test:peacemaker", @from.ToString("O"),
+                    to.ToString("O"));
+            }
+        }
+
+        private IEnumerable<string> ExpectedBeats(DateTime @from, DateTime to)
+        {
+            var expectedBeats = new List<string>();
+
+            for (var d = @from.CreateCopy(); d < to.CreateCopy(); d = d.Add(Interval))
+            {
+                expectedBeats.Add(d.ToString("O"));
+            }
+
+            return expectedBeats;
+        }
+
 
         public void Dispose()
         {

@@ -21,7 +21,7 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
             JsConfig.DateHandler = DateHandler.ISO8601;
             _bus = RabbitHutch.CreateBus("host=localhost");
             _redisClientsManager = new RedisManagerPool("localhost");
-            _heartbeatSvc = new HeartBeatClient(_bus, _redisClientsManager, TimeSpan.FromMilliseconds(100));
+            _heartbeatSvc = new HeartBeatClient(_bus, _redisClientsManager);
         }
 
         [OneTimeTearDown]

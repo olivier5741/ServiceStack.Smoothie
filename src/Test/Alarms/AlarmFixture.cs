@@ -37,9 +37,7 @@ namespace ServiceStack.Smoothie.Test.Alarms
             _bus = RabbitHutch.CreateBus("host=localhost");
             container.Register(_bus);
             
-            var heartbeatSvc = new HeartBeatClient(_bus, redisClientsManager, TimeSpan.FromMilliseconds(100));
-            container.Register(c => heartbeatSvc);
-
+            container.RegisterAutoWired<HeartBeatClient>();
             container.RegisterAutoWired<AlarmService>();
 
             using (var db = container.Resolve<IDbConnectionFactory>().Open())
