@@ -12,10 +12,10 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
     {
         private readonly IBus _bus;
         private readonly IRedisClientsManager _redisClientsManager;
-        
         private System.Timers.Timer _timer;
-        
+
         public TimeSpan Interval { get; set; } = TimeSpan.FromMilliseconds(100);
+
 
         public HeartBeatClient(IBus bus, IRedisClientsManager redisClientsManager)
         {
@@ -67,9 +67,7 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
         private bool AddBeatToRedis(DateTime rounded)
         {
             using (var redis = _redisClientsManager.GetClient())
-            {
                 return redis.AddItemToSortedSet("test:peacemaker", rounded.ToString("O"));
-            }
         }
 
         private DateTime RoundTime(HeartBeatUnprecise h)
@@ -93,10 +91,8 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
         private IEnumerable<string> PublishedBeats(DateTime @from, DateTime to)
         {
             using (var redis = _redisClientsManager.GetClient())
-            {
                 return redis.GetRangeFromSortedSetByHighestScore("test:peacemaker", @from.ToString("O"),
                     to.ToString("O"));
-            }
         }
 
         private IEnumerable<string> ExpectedBeats(DateTime @from, DateTime to)
@@ -104,13 +100,10 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
             var expectedBeats = new List<string>();
 
             for (var d = @from.CreateCopy(); d < to.CreateCopy(); d = d.Add(Interval))
-            {
                 expectedBeats.Add(d.ToString("O"));
-            }
 
             return expectedBeats;
         }
-
 
         public void Dispose()
         {

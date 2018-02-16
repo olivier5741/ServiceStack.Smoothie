@@ -59,9 +59,9 @@ namespace ServiceStack.Smoothie.Api.Test
             Plugins.Add(new AlarmFeature());
             Plugins.Add(new SmoothFeature());
             
-            this.AfterInitCallbacks = new List<Action<IAppHost>>
+            AfterInitCallbacks = new List<Action<IAppHost>>
             {
-                new Action<IAppHost>(apphost =>
+                apphost =>
                 {
                     using (var sess = container.TryResolve<IDbConnectionFactory>().Open())
                     {
@@ -98,7 +98,7 @@ namespace ServiceStack.Smoothie.Api.Test
 
                         sess.SaveAll(new []{app1, app2});
                     }
-                })
+                }
             };
             
             
