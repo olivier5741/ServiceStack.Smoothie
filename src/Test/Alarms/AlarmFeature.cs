@@ -27,10 +27,15 @@ namespace ServiceStack.Smoothie.Test.Alarms
 
         public void AfterPluginsLoaded(IAppHost appHost)
         {
-            appHost.TryResolve<HeartBeatClient>().Start();
-            
             appHost.TryResolve<IBus>().Subscribe<HeartBeat>("alarm",
-                h => { appHost.TryResolve<AlarmService>().Play(); }, c => c.WithTopic("#.ms.0.#"));
+                h =>
+                {
+                    using (var service = appHost.TryResolve<AlarmService>())
+                        service.Play();
+                }, c => c.WithTopic("#.ms.0.#"));
+            
+            
+            appHost.TryResolve<HeartBeatClient>().Start();
         }
     }
 }

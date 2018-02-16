@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using EasyNetQ;
 using ServiceStack.OrmLite;
 using ServiceStack.Smoothie.Test.Interfaces;
@@ -57,15 +58,21 @@ namespace ServiceStack.Smoothie.Test.Alarms
         public void Play()
         {
             // best to use redis afterwards
-            var alarms = Db.Select<Alarm>(a => a.Time <= DateTime.Now && a.Cancelled == false && a.Published == false);
-            alarms.ForEach(a =>
+
+            // todo make a seperate queue to publish them one by one : better for failure
+            ExpiredAlarms().ForEach(a =>
             {
                 a.Published = true;
                 // at most once
                 Db.Save(a);
-                Redis.Set("test:alarm:"+a.Id, a, TimeSpan.FromMinutes(1)); // Don't remember why I need this
+                Redis.Set("test:alarm:"+a.Id, a, TimeSpan.FromMinutes(1)); // Make sure not to publish them twice ...
                 _bus.Publish(a);
             });
+        }
+
+        private List<Alarm> ExpiredAlarms()
+        {
+            return Db.Select<Alarm>(a => a.Time <= DateTime.Now && a.Cancelled == false && a.Published == false);
         }
     }
 
