@@ -24,7 +24,11 @@ namespace ServiceStack.Smoothie.Test.Smooths
         public void AfterPluginsLoaded(IAppHost appHost)
         {
             appHost.TryResolve<IBus>().Subscribe<HeartBeat>("smooth",
-                h => { appHost.TryResolve<SmoothService>().Play(TimeSpan.FromSeconds(10)); },
+                h =>
+                {
+                    appHost.TryResolve<SmoothService>().Play(h);
+                },
+                // every 10 seconds
                 c => c.WithTopic("#.s.0.ms.0.#").WithTopic("#.s.10.ms.0.#").WithTopic("#.s.20.ms.0.#")
                     .WithTopic("#.s.30.ms.0.#").WithTopic("#.s.40.ms.0.#").WithTopic("#.s.50.ms.0.#"));
         }

@@ -7,8 +7,9 @@ namespace ServiceStack.Smoothie.Test.Interfaces
         public Guid Id { get; set; }
         
         public Guid TenantId { get; set; }
-
-        public SmoothLimitPerHour Limit { get; set; }
+        
+        public int LimitAmount { get; set; }
+        public int LimitByMilliseconds { get; set; }
 
         public bool Inactive { get; set; }
     }

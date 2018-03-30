@@ -80,20 +80,18 @@ namespace ServiceStack.Smoothie.Api.Test
                         {
                             Id = new Guid("d8927a9c-7512-4b1b-9ed7-c6d2bdd68e60"),
                             TenantId = new Guid("bd43f135-eb3b-4006-b176-ec7c6f58f12d"),
-                            Limit = new SmoothLimitPerHour
-                            {
-                                Amount = 5
-                            }
+                            // correspond to 300 by hour
+                            LimitAmount = 1,
+                            LimitByMilliseconds = TimeSpan.FromMilliseconds(1200).Milliseconds
                         };
                 
                         var app2 = new SmoothApp
                         {
                             Id = new Guid("6f11eb45-a35d-4f5d-ac17-96365acf9c9d"),
                             TenantId = new Guid("67be595b-4686-43e1-b54e-8bba209b5de7"),
-                            Limit = new SmoothLimitPerHour
-                            {
-                                Amount = 2
-                            }
+                            // correspond to 300 by hour
+                            LimitAmount = 1,
+                            LimitByMilliseconds = TimeSpan.FromMilliseconds(1200).Milliseconds
                         };
 
                         sess.SaveAll(new []{app1, app2});

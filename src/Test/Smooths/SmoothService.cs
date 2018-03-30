@@ -4,9 +4,17 @@ using System.Linq;
 using EasyNetQ;
 using ServiceStack.OrmLite;
 using ServiceStack.Smoothie.Test.Interfaces;
+using ServiceStack.Text;
 
 namespace ServiceStack.Smoothie.Test
 {
+    /*
+     * smooth config : one every timespan
+     * 10 par seconde
+     * 60*10 par minute
+     * 60*60*10 par heure
+     */
+    
     public class SmoothService : Service
     {
         private readonly IBus _bus;
@@ -59,16 +67,22 @@ namespace ServiceStack.Smoothie.Test
 
         
         // Get expired ressources and release them
-        public void Play(TimeSpan step)
+        public void Play(HeartBeat heartBeat)
         {
-            var now = DateTime.Now;
-            var from = now.Subtract(step);
-
-            var counters = Get(new SmoothStatusRequest {From = from}).Data;
             var apps = Db.Select<SmoothApp>(a => a.Inactive == false);
-
-            var amountToPublishByApp = AmountToPublishByApp(apps, counters, step);
-            Post(amountToPublishByApp);
+           
+            apps = apps.Where(a =>
+            {
+                var unixMS = heartBeat.Time.ToUnixTimeMs();
+                var mod = heartBeat.Time.ToUnixTimeMs() % a.LimitByMilliseconds;
+                return mod == 0;
+            }).ToList(); // SQLite does not support modulo
+            
+            Post(new SmoothReleaseRequest{Data = apps.Select(a => new SmoothRelease
+            {
+                AppId = a.Id,
+                Amount = a.LimitAmount
+            }).ToList()});
         }
 
         // get amount of ressources not yet released or lately released (greater than request.From) 
@@ -134,31 +148,6 @@ namespace ServiceStack.Smoothie.Test
             release.Data.RemoveAll(r => r.Amount == 0);
 
             return toPublish;
-        }
-
-        // amount of ressources to release by app for a given time range
-        private static SmoothReleaseRequest AmountToPublishByApp(IEnumerable<SmoothApp> apps,
-            IList<SmoothCounter> counters, TimeSpan step)
-        {
-            var amountToPublishByApp = new List<SmoothRelease>();
-            foreach (var a in apps)
-            {
-                var limit = a.Limit.Amount;
-                var publishedAmount = counters.SingleOrDefault(c => c.AppId == a.Id && c.Published)?.Count ?? 0;
-                var leftToPublish = limit - publishedAmount;
-                var speedCoefficient = step / TimeSpan.FromHours(1); // counters are fixed by hour
-
-                if (leftToPublish <= 0)
-                    continue;
-                
-                var amount = leftToPublish * speedCoefficient;
-                amountToPublishByApp.Add(new SmoothRelease {AppId = a.Id, Amount = (int) Math.Ceiling(amount)});
-            }
-
-            return new SmoothReleaseRequest
-            {
-                Data = amountToPublishByApp
-            };
         }
     }
 }

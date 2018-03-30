@@ -20,6 +20,10 @@ namespace ServiceStack.Smoothie.Test.Smooths
         }
     }
 
+    // TODO : find best way to fluidify at max so 300 by hour becomes 60*60*10 / 300 -> one very 12 * 100 ms
+    
+    // 700 by hour is 7 by 36 * 100 ms so 7 every 3.6 seconds
+    
     [TestFixture]
     public class SmootherFixture
     {
@@ -33,10 +37,9 @@ namespace ServiceStack.Smoothie.Test.Smooths
             _app = new SmoothApp
             {
                 Id = new Guid("d8927a9c-7512-4b1b-9ed7-c6d2bdd68e60"),
-                Limit = new SmoothLimitPerHour
-                {
-                    Amount = 5
-                }
+                
+                LimitAmount = 7,
+                LimitByMilliseconds = (int) TimeSpan.FromMilliseconds(1200).TotalMilliseconds
             };
 
             JsConfig.DateHandler = DateHandler.ISO8601;
@@ -77,7 +80,7 @@ namespace ServiceStack.Smoothie.Test.Smooths
         {
             _svc.Post(new Smooth {Id = Guid.NewGuid(), AppId = _app.Id});
 
-            _svc.Play(TimeSpan.FromSeconds(30));
+            _svc.Play(new HeartBeat{Time = DateTime.Now.Date.AddSeconds(1).AddMilliseconds(200), Interval = TimeSpan.FromMilliseconds(100)});
 
             Assert.True(true);
         }
