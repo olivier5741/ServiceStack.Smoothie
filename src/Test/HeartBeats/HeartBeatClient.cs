@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using EasyNetQ;
 using ServiceStack.Redis;
 using ServiceStack.Smoothie.Test.Interfaces;
@@ -8,6 +9,7 @@ using ServiceStack.Text;
 
 namespace ServiceStack.Smoothie.Test.HeartBeats
 {
+    
     public class HeartBeatClient : IDisposable
     {
         private readonly IBus _bus;
@@ -15,6 +17,10 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
         private System.Timers.Timer _timer;
 
         public TimeSpan Interval { get; set; } = TimeSpan.FromMilliseconds(100);
+        public TimeSpan MissingBeatsInThePastFrom { get; set; } = TimeSpan.FromSeconds(1);
+        public TimeSpan MissingBeatsInThePastTo { get; set; } = TimeSpan.FromSeconds(2);
+        public TimeSpan MissingBeatsInThePastToMax { get; set; } = TimeSpan.FromSeconds(4);
+        
 
 
         public HeartBeatClient(IBus bus, IRedisClientsManager redisClientsManager)
@@ -44,8 +50,9 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
             _bus.Subscribe<HeartBeatUnprecise>("peacemaker", PublishBeat);
 
             // should be based on unprecise perhaps, yes better but did not work lately
+            
             _bus.Subscribe<HeartBeat>("missing-beats", HandleMissingBeats,
-                cfg => cfg.WithTopic("#.ms.500.#").WithTopic("#.ms.0.#"));
+                cfg => cfg.WithTopic("#.ms.0.#").WithTopic("#.ms.500.#")); // every minute
         }
 
         // publish exactly one heartbeat based on the unprecise once (use Redis for duplicate check)
@@ -78,8 +85,13 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
         // publish unprecise beats based on missing beats
         private void HandleMissingBeats(HeartBeat h)
         {
-            var from = h.Time.AddMinutes(-2);
-            var to = h.Time.AddMinutes(-1);
+            var from = h.Time.Subtract(MissingBeatsInThePastTo);
+            var to = h.Time.Subtract(MissingBeatsInThePastFrom);
+
+            var max = DateTime.Now.Subtract(MissingBeatsInThePastToMax);
+            
+            if (from < max)
+                from = max;
 
             var missingBeats = ExpectedBeats(@from, to).Except(PublishedBeats(@from, to));
 

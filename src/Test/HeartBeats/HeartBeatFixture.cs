@@ -36,10 +36,14 @@ namespace ServiceStack.Smoothie.Test.HeartBeats
         public void Morethan15HeartbeatsIn2Seconds()
         {
             var counter = 0;
-            _bus.Subscribe<HeartBeat>("test", a => counter++);
+            _bus.Subscribe<HeartBeat>("test", a =>
+            {
+                a.Time.PrintDump();
+                counter++;
+            });
             
             _heartbeatSvc.Start();
-            Thread.Sleep(TimeSpan.FromSeconds(2));
+            Thread.Sleep(TimeSpan.FromSeconds(10));
             Assert.GreaterOrEqual(counter,15);
         }
     }
